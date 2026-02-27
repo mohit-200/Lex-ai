@@ -6,8 +6,11 @@ legal document structure. This parser detects clause/section boundaries
 and keeps them intact as semantic units, which dramatically improves
 retrieval quality.
 """
+import io
 import re
 import fitz  # PyMuPDF
+import pytesseract
+from PIL import Image
 from dataclasses import dataclass
 
 
@@ -75,10 +78,12 @@ def _extract_page_text(page) -> str:
     except Exception:
         pass
 
-    # Method 5: OCR via Tesseract (for image-based / scanned PDFs)
+    # Method 5: Render page as image and OCR with pytesseract
     try:
-        tp = page.get_textpage_ocr(flags=3, dpi=300, full=True, language="eng")
-        text = page.get_text(textpage=tp)
+        mat = fitz.Matrix(300 / 72, 300 / 72)  # 300 DPI
+        pix = page.get_pixmap(matrix=mat)
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        text = pytesseract.image_to_string(img, lang="eng")
         if text.strip():
             return text
     except Exception:
