@@ -1,11 +1,13 @@
-version: "3.9"
-
 services:
   api:
     build: .
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      QDRANT_HOST: qdrant
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://legaldoc:legaldoc@postgres:5432/legaldoc
     volumes:
       - ./app:/app/app
     depends_on:
@@ -17,6 +19,10 @@ services:
   worker:
     build: .
     env_file: .env
+    environment:
+      QDRANT_HOST: qdrant
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://legaldoc:legaldoc@postgres:5432/legaldoc
     depends_on:
       - redis
       - postgres

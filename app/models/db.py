@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Optional
 from sqlalchemy import String, DateTime, Integer, Float, Text, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -27,8 +28,8 @@ class RiskAnalysis(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     document_id: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")  # pending | done | failed
-    risks: Mapped[dict] = mapped_column(JSON, nullable=True)  # List of risk findings
-    overall_risk_score: Mapped[float] = mapped_column(Float, nullable=True)
+    risks: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # List of risk findings
+    overall_risk_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

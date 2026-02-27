@@ -33,6 +33,60 @@ CLAUSE_PATTERNS = [
 CLAUSE_REGEX = re.compile("|".join(CLAUSE_PATTERNS), re.MULTILINE)
 
 
+def _extract_page_text(page) -> str:
+    """
+    Try multiple PyMuPDF extraction methods to handle various PDF encodings.
+    Falls back progressively if the primary method returns no text.
+    """
+    # Method 1: standard text extraction
+    text = page.get_text("text")
+    if text.strip():
+        return text
+
+    # Method 2: extract from block structure (handles some unusual encodings)
+    try:
+        blocks = page.get_text("blocks")
+        text = "\n".join(b[4] for b in blocks if len(b) > 4 and isinstance(b[4], str))
+        if text.strip():
+            return text
+    except Exception:
+        pass
+
+    # Method 3: extract from word-level data
+    try:
+        words = page.get_text("words")
+        text = " ".join(w[4] for w in words if len(w) > 4 and isinstance(w[4], str))
+        if text.strip():
+            return text
+    except Exception:
+        pass
+
+    # Method 4: raw dict — catches text with unusual font/encoding
+    try:
+        raw = page.get_text("rawdict")
+        parts = []
+        for block in raw.get("blocks", []):
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    parts.append(span.get("text", ""))
+        text = " ".join(parts)
+        if text.strip():
+            return text
+    except Exception:
+        pass
+
+    # Method 5: OCR via Tesseract (for image-based / scanned PDFs)
+    try:
+        tp = page.get_textpage_ocr(flags=3, dpi=300, full=True, language="eng")
+        text = page.get_text(textpage=tp)
+        if text.strip():
+            return text
+    except Exception:
+        pass
+
+    return ""
+
+
 def parse_pdf(file_bytes: bytes) -> list[Clause]:
     """
     Parse a PDF into clause-aware chunks.
@@ -42,7 +96,7 @@ def parse_pdf(file_bytes: bytes) -> list[Clause]:
     clauses = []
 
     for page_num, page in enumerate(doc, start=1):
-        text = page.get_text("text")
+        text = _extract_page_text(page)
         clauses.extend(_extract_clauses_from_page(text, page_num))
 
     doc.close()
