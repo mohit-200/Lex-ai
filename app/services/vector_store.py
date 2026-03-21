@@ -2,8 +2,9 @@
 Vector store service.
 Handles embedding generation and all Qdrant operations.
 """
+import asyncio
 import uuid
-from openai import AsyncOpenAI
+from sentence_transformers import SentenceTransformer
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct, Filter,
@@ -13,10 +14,11 @@ from app.core.config import settings
 from app.services.parser import Clause
 
 
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+# Load once at startup — runs locally inside Docker, no API cost
+_embedding_model = SentenceTransformer(settings.embedding_model)
 qdrant = AsyncQdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
 
-VECTOR_SIZE = 1536  # text-embedding-3-small output size
+VECTOR_SIZE = 384  # all-MiniLM-L6-v2 output size
 
 
 async def ensure_collection():
@@ -31,21 +33,17 @@ async def ensure_collection():
 
 
 async def embed_text(text: str) -> list[float]:
-    """Generate embedding for a single text."""
-    response = await client.embeddings.create(
-        model=settings.embedding_model,
-        input=text,
-    )
-    return response.data[0].embedding
+    """Generate embedding for a single text (runs in thread to avoid blocking event loop)."""
+    loop = asyncio.get_event_loop()
+    embedding = await loop.run_in_executor(None, _embedding_model.encode, text)
+    return embedding.tolist()
 
 
 async def embed_batch(texts: list[str]) -> list[list[float]]:
-    """Generate embeddings for a batch of texts (more efficient)."""
-    response = await client.embeddings.create(
-        model=settings.embedding_model,
-        input=texts,
-    )
-    return [item.embedding for item in response.data]
+    """Generate embeddings for a batch of texts."""
+    loop = asyncio.get_event_loop()
+    embeddings = await loop.run_in_executor(None, _embedding_model.encode, texts)
+    return embeddings.tolist()
 
 
 async def index_document(document_id: str, clauses: list[Clause]) -> int:

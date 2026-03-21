@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.services.vector_store import search
 from app.models.schemas import QueryResponse, SourceClause
 
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+client = AsyncOpenAI(api_key="ollama", base_url=settings.llm_base_url)
 
 SYSTEM_PROMPT = """You are a precise legal document analyst. Your job is to answer questions 
 about legal contracts based ONLY on the provided document clauses.
@@ -93,12 +93,12 @@ Note: The retrieved clauses have low relevance scores. If you cannot find a clea
 say so explicitly rather than guessing."""
 
     response = await client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.ollama_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.1,   # Low temp for factual, consistent answers
+        temperature=0.1,
         max_tokens=600,
     )
 

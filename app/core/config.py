@@ -2,10 +2,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # OpenAI
-    openai_api_key: str
-    openai_model: str = "gpt-4o"
-    embedding_model: str = "text-embedding-3-small"
+    # Ollama — runs locally, no API key needed
+    llm_base_url: str = "http://host.docker.internal:11434/v1"
+    openai_model: str = "llama3.2:3b"
+    embedding_model: str = "all-MiniLM-L6-v2"  # local sentence-transformers, no API cost
 
     # Qdrant
     qdrant_host: str = "localhost"

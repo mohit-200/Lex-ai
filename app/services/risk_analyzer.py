@@ -6,12 +6,11 @@ using the LLM. Results are stored in PostgreSQL and returned via API.
 """
 import asyncio
 import json
-from openai import OpenAI  # Sync client for Celery tasks
+from openai import OpenAI
 from app.core.celery_app import celery_app
 from app.core.config import settings
 
-# Sync client for use inside Celery (Celery doesn't support async tasks natively)
-openai_client = OpenAI(api_key=settings.openai_api_key)
+llm_client = OpenAI(api_key="ollama", base_url=settings.llm_base_url)
 
 RISK_CATEGORIES = {
     "unlimited_liability": "Clauses that expose a party to unlimited or uncapped financial liability",
@@ -94,19 +93,14 @@ def analyze_document_risks(self, document_id: str):
 def _analyze_clause(clause: dict, risk_categories_text: str) -> dict | None:
     """Analyze a single clause for risks. Returns finding dict or None."""
     try:
-        response = openai_client.chat.completions.create(
-            model=settings.openai_model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": RISK_ANALYSIS_PROMPT.format(
-                        risk_categories=risk_categories_text
-                    ) + f"\n\nClause to analyze:\n{clause['text'][:1500]}"
-                }
-            ],
+        prompt = RISK_ANALYSIS_PROMPT.format(risk_categories=risk_categories_text)
+        prompt += f"\n\nClause to analyze:\n{clause['text'][:1500]}"
+
+        response = llm_client.chat.completions.create(
+            model=settings.ollama_model,
+            messages=[{"role": "user", "content": prompt}],
             temperature=0,
             max_tokens=300,
-            response_format={"type": "json_object"},
         )
 
         result = json.loads(response.choices[0].message.content)

@@ -8,7 +8,10 @@
       "Bash(docker compose build)",
       "Bash(git add Dockerfile app/services/parser.py app/models/db.py docker-compose.yml requirements.txt .env.example .claude/settings.local.json)",
       "Bash(git commit:*)",
-      "Bash(git add .claude/settings.local.json requirements-eval.txt)"
+      "Bash(git add .claude/settings.local.json requirements-eval.txt)",
+      "Bash(git push origin main)",
+      "Bash(docker-compose down:*)",
+      "Bash(powershell -Command \"[System.Environment]::GetEnvironmentVariable\\(''Path'', ''User''\\)\")"
     ]
   }
 }
