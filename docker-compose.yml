@@ -8,12 +8,14 @@ services:
       QDRANT_HOST: qdrant
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql+asyncpg://legaldoc:legaldoc@postgres:5432/legaldoc
+      LLM_BASE_URL: http://ollama:11434/v1
     volumes:
       - ./app:/app/app
     depends_on:
       - qdrant
       - redis
       - postgres
+      - ollama
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
@@ -23,10 +25,29 @@ services:
       QDRANT_HOST: qdrant
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql+asyncpg://legaldoc:legaldoc@postgres:5432/legaldoc
+      LLM_BASE_URL: http://ollama:11434/v1
     depends_on:
       - redis
       - postgres
+      - ollama
     command: celery -A app.core.celery_app worker --loglevel=info
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - api
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -47,10 +68,11 @@ services:
       POSTGRES_PASSWORD: legaldoc
       POSTGRES_DB: legaldoc
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
+  ollama_data:
   qdrant_data:
   postgres_data:

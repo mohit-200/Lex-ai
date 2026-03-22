@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.api.deps import get_db
 
 router = APIRouter(tags=["Risk & Comparison"])
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+client = AsyncOpenAI(api_key="ollama", base_url=settings.llm_base_url)
 
 
 @router.get("/documents/{document_id}/risks", response_model=RiskAnalysisResponse)
@@ -102,10 +102,15 @@ Maximum 20 diffs. Order by significance (high first).
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
         max_tokens=2000,
-        response_format={"type": "json_object"},
     )
 
-    result = json.loads(response.choices[0].message.content)
+    content = response.choices[0].message.content
+    # Extract JSON block in case Ollama wraps it in markdown
+    if "```" in content:
+        content = content.split("```")[1]
+        if content.startswith("json"):
+            content = content[4:]
+    result = json.loads(content.strip())
     diffs = [ClauseDiff(**d) for d in result.get("diffs", [])]
     high_count = sum(1 for d in diffs if d.significance == "high")
 

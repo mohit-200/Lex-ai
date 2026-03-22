@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routes import documents, query, risk
+from app.api.routes import documents, query, risk, auth
+from app.core.config import settings
 from app.models.db import Base
 from app.api.deps import engine
 
@@ -31,6 +33,7 @@ Built with FastAPI · Qdrant · LangChain · GPT-4o · Celery
     lifespan=lifespan,
 )
 
+app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,6 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(query.router)
 app.include_router(risk.router)
